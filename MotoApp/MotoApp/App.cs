@@ -1,104 +1,61 @@
-﻿using MotoApp.Components.DataProviders;
-using MotoApp.Data.Entities;
-using MotoApp.Data.Repositories;
+﻿using MotoApp.Components.CsvReader;
+using MotoApp.Components.CsvReader.Models;
+using System.Text.RegularExpressions;
 
 namespace MotoApp;
 
 public class App : IApp
 {
-    private readonly IRepository<Employee> _employeesRepository;
-    private readonly IRepository<Car> _carsRepository;
-    private readonly ICarsProvider _carsProvider;
+    private readonly ICsvReader _csvReader;
 
-    public App(
-        IRepository<Employee> employeesRepository,
-        IRepository<Car> carsRepository,
-        ICarsProvider carsProvider)
+    public App(ICsvReader csvReader)
     {
-        _employeesRepository = employeesRepository;
-        _carsRepository = carsRepository;
-        _carsProvider = carsProvider;
+        _csvReader = csvReader;
     }
 
     public void Run()
     {
-        Console.WriteLine("I'm here in Run() method");
+        var cars = _csvReader.ProcessCars("Resources\\Files\\fuel.csv");
+        var manufacturers = _csvReader.ProcessManufacturers("Resources\\Files\\manufacturers.csv");
 
-        //adding
-        var employees = new[]
-        {
-            new Employee { FirstName = "Antek" },
-            new Employee { FirstName = "Natan" },
-            new Employee { FirstName = "Maja" },
-        };
 
-        foreach (var employee in employees)
+        //var groups = cars
+        //    .GroupBy(x => x.Manufacturer)
+        //    .Select(g => new
+        //    {
+        //        Name = g.Key,
+        //        Max = g.Max(c => c.Combined),
+        //        Average = g.Average(c => c.Combined),
+        //    })
+        //    .OrderBy(x => x.Average);
+
+        //foreach (var group in groups)
+        //{
+        //    Console.WriteLine($"{group.Name}");
+        //    Console.WriteLine($"\t Max: {group.Max}");
+        //    Console.WriteLine($"\t Average: {group.Average}");
+
+        //}
+
+        var carsInCountry = cars.Join(
+            manufacturers,
+            x => x.Manufacturer,
+            x => x.Name,
+            (car, manufacturer) =>
+                 new
+                 {
+                     manufacturer.Country,
+                     car.Name,
+                     car.Combined
+                 })
+            .OrderByDescending(x => x.Combined)
+            .ThenBy(x => x.Name);
+
+        foreach (var car in carsInCountry)
         {
-            _employeesRepository.Add(employee);
+            Console.WriteLine($"Country: {car.Country}");
+            Console.WriteLine($"\t Name: {car.Name}");
+            Console.WriteLine($"\t Combined: {car.Combined}");
         }
-
-        _employeesRepository.Save();
-
-        //reading
-        var items = _employeesRepository.GetAll();
-        foreach (var item in items)
-        {
-            Console.WriteLine(item);
-        }
-
-        //cars
-        var cars = GenerateSampleCars();
-        foreach (var car in cars)
-        {
-            _carsRepository.Add(car);
-        }
-
-        foreach (var car in _carsProvider.GetUniqueCarColors())
-        {
-            Console.WriteLine(car);
-        }
-    }
-
-    public static List<Car> GenerateSampleCars()
-    {
-        return new List<Car>
-        {
-            new Car
-            {
-                Id = 680,
-                Name = "Car 1",
-                Color = "Black",
-                StandardCost = 1059.31M,
-                ListPrice = 1431.50M,
-                Type = "58",
-            },
-            new Car
-            {
-                 Id = 706,
-                Name = "Car 2",
-                Color = "Red",
-                StandardCost = 1059.31M,
-                ListPrice = 1431.50M,
-                Type = "58",
-            },
-            new Car
-            {
-                 Id = 707,
-                Name = "Car 3",
-                Color = "Red",
-                StandardCost = 13.08M,
-                ListPrice = 34.99M,
-                Type = null,
-            },
-            new Car
-            {
-                 Id = 708,
-                Name = "Car 4",
-                Color = "White",
-                StandardCost = 14.09M,
-                ListPrice = 34.99M,
-                Type = "M",
-            }
-        };
     }
 }
