@@ -1,6 +1,6 @@
 ﻿using MotoApp.Components.CsvReader;
 using MotoApp.Components.CsvReader.Models;
-using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace MotoApp;
 
@@ -15,47 +15,18 @@ public class App : IApp
 
     public void Run()
     {
-        var cars = _csvReader.ProcessCars("Resources\\Files\\fuel.csv");
-        var manufacturers = _csvReader.ProcessManufacturers("Resources\\Files\\manufacturers.csv");
+        var records = _csvReader.ProcessCars("Resources\\Files\\fuel.csv");
 
+        var document = new XDocument();
 
-        //var groups = cars
-        //    .GroupBy(x => x.Manufacturer)
-        //    .Select(g => new
-        //    {
-        //        Name = g.Key,
-        //        Max = g.Max(c => c.Combined),
-        //        Average = g.Average(c => c.Combined),
-        //    })
-        //    .OrderBy(x => x.Average);
+        var cars = new XElement("Cars", records
+            .Select(x => 
+                new XElement("Car",
+                    new XAttribute("Name", x.Name),
+                    new XAttribute("Combined", x.Combined),
+                    new XAttribute("Manufacturer", x.Manufacturer))));
 
-        //foreach (var group in groups)
-        //{
-        //    Console.WriteLine($"{group.Name}");
-        //    Console.WriteLine($"\t Max: {group.Max}");
-        //    Console.WriteLine($"\t Average: {group.Average}");
-
-        //}
-
-        var carsInCountry = cars.Join(
-            manufacturers,
-            x => x.Manufacturer,
-            x => x.Name,
-            (car, manufacturer) =>
-                 new
-                 {
-                     manufacturer.Country,
-                     car.Name,
-                     car.Combined
-                 })
-            .OrderByDescending(x => x.Combined)
-            .ThenBy(x => x.Name);
-
-        foreach (var car in carsInCountry)
-        {
-            Console.WriteLine($"Country: {car.Country}");
-            Console.WriteLine($"\t Name: {car.Name}");
-            Console.WriteLine($"\t Combined: {car.Combined}");
-        }
+        document.Add(cars);
+        document.Save("fuel.xml");
     }
 }
